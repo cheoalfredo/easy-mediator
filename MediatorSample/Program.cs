@@ -22,7 +22,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 
-app.MapControllers();
 
 app.MapGet("/mediator", async (IMediator mediator) =>
 {
