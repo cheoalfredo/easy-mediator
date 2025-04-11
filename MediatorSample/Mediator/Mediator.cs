@@ -1,43 +1,31 @@
 ﻿using System.Reflection;
+using System.Xml.Schema;
 
 namespace MediatorSample.Mediator;
 
 public interface IMediator
-{
-    public void RegisterHandler<TRequest, TResponse>(IRequestHandler<TRequest, TResponse> handler) where TRequest : IRequest<TResponse>;
+{    
     Task<TResponse> Send<TResponse>(IRequest<TResponse> request);
 }
 
 
-public class Mediator : IMediator
+public class Mediator(IServiceProvider Services) : IMediator
 {
 
-    private readonly Dictionary<Type, Func<object, Task<object>>> Handlers;
-
-    public Mediator()
-    {
-        Handlers = [];
-    }
-
-    public void RegisterHandler<TRequest, TResponse>(IRequestHandler<TRequest, TResponse> handler) where TRequest : IRequest<TResponse>
-    {
-
-        if (Handlers is not null)
-        {
-            Handlers[typeof(TRequest)] = async (request) =>
-                    await handler.HandleAsync((TRequest)request)
-                    ?? throw new InvalidOperationException($"Unable to register handler for {request.GetType().Name}");
-        }
-    }
+    private readonly Dictionary<Type, Func<object, Task<object>>> Handlers = [];    
+    
 
     public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
     {
         var requestType = request.GetType();
-        if (Handlers.TryGetValue(requestType, out var handler))
-        {
-            return (TResponse)await handler(request);
-        }
-        throw new InvalidOperationException($"No handler registered for {requestType.Name}");
+        var handlerInterfaceType = typeof(IRequestHandler<,>)
+            .MakeGenericType(requestType, typeof(TResponse));
+            
+        
+        dynamic handler = Services.GetRequiredService(handlerInterfaceType) 
+            ?? throw new InvalidOperationException($"There's no handler registered to process {requestType}"); ;
+        return await handler.HandleAsync((dynamic)request);
+
     }
 }
 
@@ -45,7 +33,7 @@ public class Mediator : IMediator
 public static class MediatorExtensions
 {
     // Este método es el que se encarga de registrar via DI el Mediator y
-    // los handlers en en singleton del mismo
+    // los handlers que luego serán ubicados por el método IRequestHandler<,>.HandleAsync() 
     public static IServiceCollection AddMediator(this IServiceCollection services, Assembly? assembly = null)
     {
         if (assembly == null)
@@ -53,36 +41,23 @@ public static class MediatorExtensions
             assembly = Assembly.GetExecutingAssembly();
         }
 
-        // Listamos todos aquellos objetos que implementan IRequestHandler
-        var handlers = assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && t.GetInterfaces()
-            .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequestHandler<,>)))
-            .ToList();
+        var handlerInterfaceType = typeof(IRequestHandler<,>);
 
-        var mediator = new Mediator();
+        var handlerTypes = assembly.GetTypes()
+             .Where(t => t.IsClass && !t.IsAbstract)
+            .SelectMany(implementation => implementation.GetInterfaces()
+                        .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterfaceType),
+                        (implementation, iface) => new { Implementation = implementation, Interface = iface })
+            .Distinct();
 
-        // Iteramos todos los handlers encontrados.
-        foreach (var entry in handlers)
-        {
-            var instance = Activator.CreateInstance(entry);
-            // Sacamos TRequest & TResponse
-            var handlerInterface = entry.GetInterfaces()
-                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequestHandler<,>));
-            var requestType = handlerInterface.GetGenericArguments()[0];
-            var responseType = handlerInterface.GetGenericArguments()[1];
-
-            // Reflexion para invocar el método RegisterHandler (esto porque lo hacemos en ejecución y no en compilación)
-            var registerMethod = typeof(Mediator).GetMethod(nameof(Mediator.RegisterHandler))!
-                .MakeGenericMethod(requestType, responseType);
-
-            registerMethod.Invoke(mediator, [instance]);
+        // Register each handler as transient.
+        foreach (var reg in handlerTypes)
+        {            
+            services.AddTransient(reg.Interface, reg.Implementation);
         }
 
-        services.AddSingleton<IMediator>(svc =>
-        {
-
-            return mediator;
-        });
+        // Register the mediator so it can be resolved.
+        services.AddSingleton<IMediator, Mediator>();
 
         return services;
     }
