@@ -8,6 +8,7 @@ public class FactorialQueryHandler : IRequestHandler<FactorialQuery, int>
     {
         return await Task.FromResult(Factorial(request.Number));
     }
+
     private int Factorial(int number)
     {
         if (number <= 1) return 1;

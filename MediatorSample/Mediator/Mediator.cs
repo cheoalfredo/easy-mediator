@@ -10,10 +10,7 @@ public interface IMediator
 
 
 public class Mediator(IServiceProvider Services) : IMediator
-{
-
-    private readonly Dictionary<Type, Func<object, Task<object>>> Handlers = [];    
-    
+{   
 
     public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
     {
