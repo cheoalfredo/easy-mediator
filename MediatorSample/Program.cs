@@ -23,16 +23,15 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 
-app.MapGet("/mediator", async (IMediator mediator) =>
-{
-    var request = new FactorialQuery(5);
-    var response = await mediator.Send(request);
+app.MapGet("/mediator/{query}", async (IMediator mediator, int query, CancellationToken token) =>
+{    
+    var response = await mediator.Send(new FactorialQuery(query),token);
     return Results.Ok(response);
 });
 
-app.MapPost("/mediator", async (IMediator mediator, DemoCommand command) =>
+app.MapPost("/mediator", async (IMediator mediator, DemoCommand command, CancellationToken token) =>
 {    
-   await mediator.Send(command);   
+   await mediator.Send(command,token);   
 });
 
 app.Run();

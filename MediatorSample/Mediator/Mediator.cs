@@ -5,14 +5,14 @@ namespace MediatorSample.Mediator;
 
 public interface IMediator
 {    
-    Task<TResponse> Send<TResponse>(IRequest<TResponse> request);
+    Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken t);
 }
 
 
 public class Mediator(IServiceProvider Services) : IMediator
 {   
 
-    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
+    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken token = default)
     {
         var requestType = request.GetType();
         var handlerInterfaceType = typeof(IRequestHandler<,>)
@@ -21,7 +21,7 @@ public class Mediator(IServiceProvider Services) : IMediator
         
         dynamic handler = Services.GetRequiredService(handlerInterfaceType) 
             ?? throw new InvalidOperationException($"There's no handler registered to process {requestType}"); ;
-        return await handler.HandleAsync((dynamic)request);
+        return await handler.HandleAsync((dynamic)request, token);
 
     }
 }

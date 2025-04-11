@@ -12,9 +12,12 @@ public class DemoCommandHandler : IRequestHandler<DemoCommand, Unit>
         _logger = logger;
     }
 
-    public async Task<Unit> HandleAsync(DemoCommand request)
-    {                
-        await Task.Run(() => _logger.LogInformation($"Doing something with {request.Data}"));
+    public async Task<Unit> HandleAsync(DemoCommand request, CancellationToken token)
+    {
+        if (!token.IsCancellationRequested)
+        {
+            await Task.Run(() => _logger.LogInformation($"Doing something with {request.Data}"));
+        }
         // como no retornamos na... retorne el unit     
         return Unit.Value;
     }

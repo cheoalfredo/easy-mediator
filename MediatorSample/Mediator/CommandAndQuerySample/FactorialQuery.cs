@@ -4,8 +4,13 @@ public record FactorialQuery(int Number) : IRequest<int> { }
 
 public class FactorialQueryHandler : IRequestHandler<FactorialQuery, int>
 {
-    public async Task<int> HandleAsync(FactorialQuery request)
-    {
+    public async Task<int> HandleAsync(FactorialQuery request, CancellationToken token)
+    {    
+        if( token.IsCancellationRequested)
+        {
+            return await Task.FromResult(-1);
+        }
+
         return await Task.FromResult(Factorial(request.Number));
     }
 
