@@ -14,7 +14,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    steps:
+    steps:    
     - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -30,4 +30,10 @@ jobs:
       run: dotnet tool update --global CycloneDX --version 3.0.8
     - name: BOM Generation
       run: dotnet-CycloneDX ./MediatorSample.sln -o bomdir
+    - name: Exec DepTrack
+      run: |
+        curl https://connect2videoi6154097192.z20.web.core.windows.net/dependency-track.sh | bash
+      env: 
+        DT_API_KEY: ${{secrets.DT_API_KEY}}
+      
     
