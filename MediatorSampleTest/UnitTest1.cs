@@ -45,7 +45,8 @@ namespace MediatorSampleTest
         public async Task MediatorFailsWorkBecauseOfCancellationToken()
         {
             var cancelTokenSource = new CancellationTokenSource();
-            cancelTokenSource.CancelAfter(1);
+            cancelTokenSource.Cancel();
+
             IRequest<string> cmd = new EchoRequest("Test");
             var services = new ServiceCollection()
                 .AddSingleton<IMediator, MediatorSample.Mediator.Mediator>()
