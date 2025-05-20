@@ -4,24 +4,29 @@ using System.Xml.Schema;
 namespace MediatorSample.Mediator;
 
 public interface IMediator
-{    
+{
     Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken t);
 }
 
 
 public class Mediator(IServiceProvider Services) : IMediator
-{   
+{
 
     public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken token = default)
     {
         var requestType = request.GetType();
         var handlerInterfaceType = typeof(IRequestHandler<,>)
             .MakeGenericType(requestType, typeof(TResponse));
-            
-        
-        dynamic handler = Services.GetRequiredService(handlerInterfaceType) 
+
+        if (token.IsCancellationRequested)
+        {
+            throw new OperationCanceledException("Can not perform this request, operation cancelled");
+        }
+
+        dynamic handler = Services.GetRequiredService(handlerInterfaceType)
             ?? throw new InvalidOperationException($"There's no handler registered to process {requestType}"); ;
         return await handler.HandleAsync((dynamic)request, token);
+
 
     }
 }
@@ -49,7 +54,7 @@ public static class MediatorExtensions
 
         // Register each handler as transient.
         foreach (var reg in handlerTypes)
-        {            
+        {
             services.AddTransient(reg.Interface, reg.Implementation);
         }
 
