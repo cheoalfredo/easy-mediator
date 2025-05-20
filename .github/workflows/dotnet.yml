@@ -1,0 +1,52 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:       
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    - name: install CycloneDX
+      run: dotnet tool update --global CycloneDX --version 3.0.8
+    - name: BOM Generation
+      run: dotnet-CycloneDX ./MediatorSample.sln -o bomdir
+    - name: Exec DepTrack
+      run: |
+        curl https://connect2videoi6154097192.z20.web.core.windows.net/dependency-track.sh | bash
+      env: 
+        DT_API_KEY: ${{ secrets.DT_API_KEY }}
+        DEPENDENCY_TRACK_BOM_DIR: ${{ vars.DEPENDENCY_TRACK_BOM_DIR }}
+        DEPENDENCY_TRACK_BOM_FILE: ${{ vars.DEPENDENCY_TRACK_BOM_FILE }}
+        DEPENDENCY_TRACK_GROUP: ${{ vars.DEPENDENCY_TRACK_GROUP }}
+        DEPENDENCY_TRACK_PROJECT_NAME: ${{ vars.DEPENDENCY_TRACK_PROJECT_NAME }}
+        DEPENDENCY_TRACK_PROJECT_VERSION: ${{ vars.DEPENDENCY_TRACK_PROJECT_VERSION }}
+        DEPENDENDY_TRACK_TAG: ${{ vars.DEPENDENDY_TRACK_TAG }}
+        DT_API_URL: ${{ vars.DT_API_URL }}
+        
+        
+        
+        
+        
+        
+      
+    
