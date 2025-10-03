@@ -10,6 +10,7 @@ Easy Mediator is a minimal, easy-to-understand implementation of the mediator pa
 
 - **Simple API**: Minimal surface area with just `IMediator`, `IRequest<T>`, and `IRequestHandler<T, R>`
 - **Automatic Handler Discovery**: Automatically registers all handlers in your assembly via dependency injection
+- **Pipeline Behaviors**: Add cross-cutting concerns like logging, validation, and exception handling
 - **Cancellation Support**: Built-in support for `CancellationToken` to cancel long-running operations
 - **Type-Safe**: Strongly-typed request/response pattern
 - **Well-Documented**: Comprehensive XML documentation for IntelliSense support
@@ -91,6 +92,54 @@ public class MyController
         return Ok();
     }
 }
+```
+
+## Pipeline Behaviors
+
+Pipeline behaviors allow you to add cross-cutting concerns like logging, validation, caching, or exception handling that execute before and after request handlers.
+
+### Creating a Behavior
+
+```csharp
+public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly ILogger _logger;
+
+    public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<TResponse> HandleAsync(
+        TRequest request, 
+        RequestHandlerDelegate<TResponse> next, 
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Handling {RequestName}", typeof(TRequest).Name);
+        var response = await next();
+        _logger.LogInformation("Handled {RequestName}", typeof(TRequest).Name);
+        return response;
+    }
+}
+```
+
+### Registering Behaviors
+
+```csharp
+// Register a behavior using the extension method
+builder.Services.AddMediatorBehavior<LoggingBehavior<TRequest, TResponse>>();
+
+// Or register manually for all request types
+builder.Services.AddTransient(
+    typeof(IPipelineBehavior<,>), 
+    typeof(LoggingBehavior<,>));
+```
+
+Behaviors execute in the order they are registered, wrapping around the handler like an onion:
+
+```
+Behavior 1 (before) → Behavior 2 (before) → Handler → Behavior 2 (after) → Behavior 1 (after)
 ```
 
 ## Sample Application

@@ -49,6 +49,24 @@ public class Mediator(IServiceProvider Services) : IMediator
         dynamic handler = Services.GetRequiredService(handlerInterfaceType)
             ?? throw new InvalidOperationException($"No handler registered to process request of type '{requestType.Name}'");
 
+        // Check if there are any pipeline behaviors for this request type
+        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse));
+        var behaviors = Services.GetServices(behaviorType)?.ToList();
+
+        if (behaviors?.Count > 0)
+        {
+            // Build the pipeline with behaviors
+            RequestHandlerDelegate<TResponse> handlerDelegate = () => handler.HandleAsync((dynamic)request, token);
+
+            foreach (dynamic behavior in ((IEnumerable<dynamic>)behaviors).Reverse())
+            {
+                var currentDelegate = handlerDelegate;
+                handlerDelegate = () => behavior.HandleAsync((dynamic)request, currentDelegate, token);
+            }
+
+            return await handlerDelegate();
+        }
+
         return await handler.HandleAsync((dynamic)request, token);
     }
 }
@@ -92,6 +110,55 @@ public static class MediatorExtensions
 
         // Register the mediator as a singleton
         services.AddSingleton<IMediator, Mediator>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds a pipeline behavior that will be executed for all requests.
+    /// Behaviors are executed in the order they are registered.
+    /// </summary>
+    /// <typeparam name="TBehavior">The type of behavior to register.</typeparam>
+    /// <param name="services">The service collection to register the behavior with.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddMediatorBehavior<TBehavior>(this IServiceCollection services)
+        where TBehavior : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Register the behavior for all IPipelineBehavior<,> interfaces it implements
+        var behaviorType = typeof(TBehavior);
+        var behaviorInterfaces = behaviorType.GetInterfaces()
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+
+        foreach (var behaviorInterface in behaviorInterfaces)
+        {
+            services.AddTransient(behaviorInterface, behaviorType);
+        }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds a pipeline behavior that will be executed for all requests.
+    /// Behaviors are executed in the order they are registered.
+    /// </summary>
+    /// <param name="services">The service collection to register the behavior with.</param>
+    /// <param name="behaviorType">The type of behavior to register.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddMediatorBehavior(this IServiceCollection services, Type behaviorType)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(behaviorType);
+
+        // Register the behavior for all IPipelineBehavior<,> interfaces it implements
+        var behaviorInterfaces = behaviorType.GetInterfaces()
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+
+        foreach (var behaviorInterface in behaviorInterfaces)
+        {
+            services.AddTransient(behaviorInterface, behaviorType);
+        }
 
         return services;
     }
