@@ -56,7 +56,32 @@ namespace MediatorSampleTest
 
             await Assert.ThrowsAsync<OperationCanceledException>(
                 async () => await mediator.Send(cmd, cancelTokenSource.Token));
+        }
 
+        [Fact]
+        public async Task MediatorThrowsOnNullRequest()
+        {
+            var services = new ServiceCollection()
+                .AddSingleton<IMediator, MediatorSample.Mediator.Mediator>()
+                .AddTransient<IRequestHandler<EchoRequest, string>, MyRequestHandler>()
+                .BuildServiceProvider();
+            var mediator = services.GetRequiredService<IMediator>();
+
+            await Assert.ThrowsAsync<ArgumentNullException>(
+                async () => await mediator.Send<string>(null!, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task MediatorWorksWithDefaultCancellationToken()
+        {
+            IRequest<string> cmd = new EchoRequest("DefaultToken");
+            var services = new ServiceCollection()
+                .AddSingleton<IMediator, Mediator>()
+                .AddTransient<IRequestHandler<EchoRequest, string>, MyRequestHandler>()
+                .BuildServiceProvider();
+            var mediator = services.GetRequiredService<IMediator>();
+            var result = await mediator.Send(cmd);
+            Assert.Equal("hello DefaultToken", result);
         }
     }
 }
